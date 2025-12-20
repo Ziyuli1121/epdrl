@@ -47,11 +47,11 @@ class ExportResult:
 def _load_resolved_config(run_dir: Path) -> Mapping[str, object]:
     config_path = run_dir / "configs" / "resolved_config.yaml"
     if not config_path.is_file():
-        raise ExportError(f"未找到 Stage 7 配置文件: {config_path}")
+        raise ExportError(f"Stage 7 config file not found: {config_path}")
     with config_path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
     if not isinstance(data, Mapping):
-        raise ExportError(f"解析配置失败: {config_path}")
+        raise ExportError(f"Failed to parse config: {config_path}")
     return data
 
 
@@ -62,8 +62,8 @@ def _load_training_options_template(snapshot_path: Path) -> Dict[str, object]:
             try:
                 return json.load(handle)
             except json.JSONDecodeError as exc:  # pragma: no cover - unexpected
-                raise ExportError(f"无法解析 {candidate}: {exc}") from exc
-    # 构造最小模板
+                raise ExportError(f"Failed to parse {candidate}: {exc}") from exc
+    # Build a minimal template
     return {
         "loss_kwargs": {"class_name": "training.loss.EPD_loss"},
         "pred_kwargs": {"class_name": "training.networks.EPD_predictor"},
@@ -321,41 +321,41 @@ def export_policy_mean_to_predictor(
     include_manifest: bool = True,
 ) -> ExportResult:
     """
-    将给定 run-dir 下的策略 checkpoint 导出为 EPD predictor。
+    Export the policy checkpoint under the given run-dir to an EPD predictor.
 
     Parameters
     ----------
     run_dir:
-        Stage 7 训练输出目录 (`exps/<timestamp>-<run_name>`).
+        Stage 7 training output directory (`exps/<timestamp>-<run_name>`).
     checkpoint:
-        策略参数 (`.pt`)；若未提供则自动选取 `checkpoints/policy-step*.pt` 中步数最大的文件。
+        Policy parameters (`.pt`); if omitted selects the latest `checkpoints/policy-step*.pt`.
     output_dir:
-        导出文件保存目录；默认为 run_dir / "export".
+        Directory to store exported files; default is run_dir / "export".
     device:
-        加载策略/计算均值时使用的 PyTorch 设备字符串；默认 `cpu`。
+        PyTorch device string used to load policy/compute means; default `cpu`.
     include_manifest:
-        是否写出 manifest JSON。
+        Whether to write a manifest JSON.
     """
 
     run_dir = Path(run_dir).resolve()
     if checkpoint is None:
         checkpoint = _find_latest_policy_checkpoint(run_dir)
         if checkpoint is None:
-            raise ExportError("未找到策略 checkpoint（期待 checkpoints/policy-stepXXXXX.pt）。")
+            raise ExportError("Policy checkpoint not found (expected checkpoints/policy-stepXXXXX.pt).")
     checkpoint = Path(checkpoint)
     if not checkpoint.is_absolute():
         checkpoint = run_dir / checkpoint
     if not checkpoint.is_file():
-        raise ExportError(f"checkpoint 不存在: {checkpoint}")
+        raise ExportError(f"Checkpoint does not exist: {checkpoint}")
 
     config_dict = _load_resolved_config(run_dir)
     data_cfg = config_dict.get("data", {})
     snapshot_path_str = data_cfg.get("predictor_snapshot")
     if not snapshot_path_str:
-        raise ExportError("配置中缺少 data.predictor_snapshot 字段。")
+        raise ExportError("Missing data.predictor_snapshot field in config.")
     snapshot_path = Path(snapshot_path_str).expanduser()
     if not snapshot_path.is_file():
-        raise ExportError(f"指定的 predictor 快照不存在: {snapshot_path}")
+        raise ExportError(f"Specified predictor snapshot does not exist: {snapshot_path}")
 
     table = load_predictor_table(snapshot_path, map_location="cpu", allow_scale=False)
 
@@ -363,7 +363,7 @@ def export_policy_mean_to_predictor(
 
     state_dict = torch.load(checkpoint, map_location=torch_device)
     if not isinstance(state_dict, Mapping):
-        raise ExportError(f"载入的 checkpoint 不是 state_dict: {checkpoint}")
+        raise ExportError(f"Loaded checkpoint is not a state_dict: {checkpoint}")
 
     policy = _instantiate_policy(table, config_dict, torch_device, state_dict=state_dict)
     policy.load_state_dict(state_dict, strict=True)
@@ -425,28 +425,28 @@ def export_policy_mean_to_predictor(
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="将 PPO 策略导出为 EPD predictor。")
-    parser.add_argument("run_dir", type=Path, help="Stage 7 训练输出目录（含 configs/、logs/ 等子目录）。")
+    parser = argparse.ArgumentParser(description="Export a PPO policy to an EPD predictor.")
+    parser.add_argument("run_dir", type=Path, help="Stage 7 training output directory (includes configs/, logs/, etc.).")
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        help="策略 checkpoint (*.pt)，默认选择 checkpoints/ 下最新的 policy-step*.pt。",
+        help="Policy checkpoint (*.pt); defaults to the newest policy-step*.pt under checkpoints/.",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        help="导出文件保存路径（默认: <run_dir>/export）。",
+        help="Directory to save exported files (default: <run_dir>/export).",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cpu",
-        help="加载策略与计算均值的 PyTorch 设备 (默认: cpu)。",
+        help="PyTorch device for loading policy and computing means (default: cpu).",
     )
     parser.add_argument(
         "--no-manifest",
         action="store_true",
-        help="不写出 manifest JSON。",
+        help="Do not write the manifest JSON.",
     )
     return parser
 
@@ -461,7 +461,7 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         device=args.device,
         include_manifest=not args.no_manifest,
     )
-    print("[Stage 8] 导出完成：")
+    print("[Stage 8] Export finished:")
     print(f"  snapshot: {result.snapshot_path}")
     print(f"  training_options: {result.training_options_path}")
     if result.manifest_path:

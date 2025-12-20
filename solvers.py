@@ -124,7 +124,7 @@ def epd_sampler(
     t_steps = get_schedule(num_steps, sigma_min, sigma_max, device=latents.device, schedule_type=schedule_type, schedule_rho=schedule_rho, net=net)
     # Main sampling loop.
     backend_type = getattr(net, "backend", None)
-    # SD3 的 flowmatch 时间轴以 sigma=1 开始，无需额外缩放；其他后端保持旧行为。
+    # SD3 flowmatch timeline starts at sigma=1, so no extra scaling; other backends keep prior behavior.
     if backend_type == "sd3":
         x_next = latents
     else:

@@ -1,7 +1,7 @@
 """
-Utility CLI to compute MPS (Multi-dimensional Preference Score) for生成图.
+Utility CLI to compute MPS (Multi-dimensional Preference Score) for generated images.
 
-用法示例：
+Usage example:
     python -m training.ppo.scripts.score_mps \\
         --images exps/<run-id>/samples \\
         --prompts src/prompts/test.txt \\
@@ -39,14 +39,14 @@ def _load_prompts(path: Path) -> List[str]:
         with path.open("r", encoding="utf-8") as handle:
             prompts = [line.strip() for line in handle if line.strip()]
     if not prompts:
-        raise RuntimeError(f"未能从 {path} 读取到任何 prompt。")
+        raise RuntimeError(f"No prompts could be read from {path}.")
     return prompts
 
 
 def _collect_images(directory: Path, pattern: str) -> List[Path]:
     files = sorted(directory.glob(pattern))
     if not files:
-        raise RuntimeError(f"在 {directory} 下未找到匹配 {pattern} 的图像文件。")
+        raise RuntimeError(f"No image files matching {pattern} were found under {directory}.")
     return files
 
 
@@ -74,7 +74,7 @@ class _MPSScorer:
         )
 
         if not mps_root.exists():
-            raise RuntimeError(f"MPS 源码目录 {mps_root} 不存在。")
+            raise RuntimeError(f"MPS source directory {mps_root} does not exist.")
         if str(mps_root) not in sys.path:
             sys.path.insert(0, str(mps_root))
 
@@ -222,7 +222,7 @@ def _evaluate(
     batch_size: int,
 ) -> tuple[torch.Tensor, dict]:
     if len(image_files) != len(prompts):
-        raise RuntimeError(f"图像数量 ({len(image_files)}) 与 prompt 数量 ({len(prompts)}) 不一致。")
+        raise RuntimeError(f"Number of images ({len(image_files)}) does not match number of prompts ({len(prompts)}).")
 
     values: List[float] = []
     start = time.time()
@@ -244,36 +244,36 @@ def _evaluate(
 
 def main(argv: Iterable[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Compute MPS scores for generated images.")
-    parser.add_argument("--images", type=Path, required=True, help="包含生成图像的目录。")
+    parser.add_argument("--images", type=Path, required=True, help="Directory containing generated images.")
     parser.add_argument(
         "--pattern",
         type=str,
         default="*.png",
-        help="匹配图像文件的 glob pattern（默认: *.png）。",
+        help="Glob pattern to match image files (default: *.png).",
     )
     parser.add_argument(
         "--prompts",
         type=Path,
         required=True,
-        help="Prompt 列表文件（CSV 需包含 text 列，或纯文本每行一个 prompt）。",
+        help="Prompt list file (CSV must include a text column, or plain text with one prompt per line).",
     )
     parser.add_argument(
         "--weights",
         type=Path,
         default=Path("weights/MPS_overall_checkpoint.pth"),
-        help="MPS checkpoint 路径。",
+        help="Path to the MPS checkpoint.",
     )
     parser.add_argument(
         "--mps-root",
         type=Path,
         default=_default_mps_root(),
-        help="MPS 源码根目录（用于导入 trainer 模块）。",
+        help="Root directory of the MPS source code (used to import trainer modules).",
     )
     parser.add_argument(
         "--processor-name",
         type=str,
         default="laion/CLIP-ViT-H-14-laion2B-s32B-b79K",
-        help="CLIP tokenizer/image processor 名称。",
+        help="Name of the CLIP tokenizer/image processor.",
     )
     parser.add_argument(
         "--condition",
@@ -283,35 +283,35 @@ def main(argv: Iterable[str] | None = None) -> None:
             "hands, limbs, structure, instance, texture, quantity, attributes, position, number, "
             "location, word, things."
         ),
-        help="用于 overall 评测的 condition 描述。",
+        help="Condition description used for overall evaluation.",
     )
     parser.add_argument(
         "--mask-threshold",
         type=float,
         default=0.3,
-        help="构建 cross attention 掩码时的阈值（默认 0.3）。",
+        help="Threshold used when building the cross-attention mask (default 0.3).",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=4,
-        help="顺序评估时的批大小，用于拆分列表。",
+        help="Batch size for sequential evaluation when splitting the list.",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="运行 MPS 评估的设备。",
+        help="Device to run MPS evaluation.",
     )
     parser.add_argument(
         "--disable-amp",
         action="store_true",
-        help="禁用 FP16 推理（默认在 CUDA 上启用 FP16）。",
+        help="Disable FP16 inference (FP16 is enabled by default on CUDA).",
     )
     parser.add_argument(
         "--output-json",
         type=Path,
-        help="可选：将结果写入 JSON 文件。",
+        help="Optional: write results to a JSON file.",
     )
 
     args = parser.parse_args(argv)
@@ -320,7 +320,7 @@ def main(argv: Iterable[str] | None = None) -> None:
     prompts_path = args.prompts.resolve()
     weights_path = args.weights.expanduser()
     if not weights_path.exists():
-        raise RuntimeError(f"未找到 MPS 权重文件：{weights_path}")
+        raise RuntimeError(f"MPS weights file not found: {weights_path}")
 
     image_files = _collect_images(images_dir, args.pattern)
     prompts = _load_prompts(prompts_path)

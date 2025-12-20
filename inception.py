@@ -26,11 +26,11 @@ class InceptionFeatureExtractor:
         return features
 
 def compute_inception_mse_loss(student_images, teacher_images, feature_extractor):
-    # 提取特征
+    # Extract features
     student_features = feature_extractor.extract_features(student_images)
     teacher_features = feature_extractor.extract_features(teacher_images)
     
-    # 计算 MSE loss
+    # Compute MSE loss
     loss = F.mse_loss(student_features, teacher_features)
 
     return loss

@@ -95,7 +95,7 @@ def save_policy_checkpoint(
     step: int,
 ) -> Path:
     """
-    Persist policy 权重到 checkpoints/policy-stepXXXXXX.pt。
+    Persist policy weights to checkpoints/policy-stepXXXXXX.pt.
     """
 
     if run_config.run_dir is None:
@@ -446,7 +446,7 @@ if __name__ == "__main__":  # pragma: no cover
 
 '''
 
-看一下配置是否符合冷启动蒸馏表参数
+Check whether the config matches the cold-start distillation table parameters
 python -m training.ppo.launch --dry-run
 
 '''

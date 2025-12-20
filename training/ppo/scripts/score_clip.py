@@ -36,14 +36,14 @@ def _load_prompts(path: Path) -> List[str]:
         with path.open("r", encoding="utf-8") as handle:
             prompts = [line.strip() for line in handle if line.strip()]
     if not prompts:
-        raise RuntimeError(f"未能从 {path} 读取到任何 prompt。")
+        raise RuntimeError(f"No prompts could be read from {path}.")
     return prompts
 
 
 def _collect_images(directory: Path, pattern: str) -> List[Path]:
     files = sorted(directory.glob(pattern))
     if not files:
-        raise RuntimeError(f"在 {directory} 下未找到匹配 {pattern} 的图像文件。")
+        raise RuntimeError(f"No image files matching {pattern} were found under {directory}.")
     return files
 
 
@@ -73,7 +73,7 @@ def _score(
     batch_size: int,
 ) -> tuple[torch.Tensor, dict]:
     if len(image_files) != len(prompts):
-        raise RuntimeError(f"图像文件数量 ({len(image_files)}) 与 prompt 数量 ({len(prompts)}) 不一致。")
+        raise RuntimeError(f"Number of images ({len(image_files)}) does not match number of prompts ({len(prompts)}).")
 
     values: List[float] = []
     start = time.time()
@@ -98,51 +98,51 @@ def _score(
 
 def main(argv: Iterable[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Compute CLIP scores for generated images.")
-    parser.add_argument("--images", type=Path, required=True, help="包含生成图像的目录。")
+    parser.add_argument("--images", type=Path, required=True, help="Directory containing generated images.")
     parser.add_argument(
         "--pattern",
         type=str,
         default="*.png",
-        help="匹配图像文件的 glob pattern（默认: *.png）。",
+        help="Glob pattern to match image files (default: *.png).",
     )
     parser.add_argument(
         "--prompts",
         type=Path,
         required=True,
-        help="Prompt 列表文件（CSV 需包含 text 列，或纯文本每行一个 prompt）。",
+        help="Prompt list file (CSV must include a text column, or plain text with one prompt per line).",
     )
     parser.add_argument(
         "--weights",
         type=Path,
         default=Path("weights/clip"),
-        help="CLIP 权重缓存目录（若不存在会自动创建并下载）。",
+        help="CLIP weights cache directory (auto-created and downloaded if missing).",
     )
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        help="兼容参数，若提供则覆盖默认权重目录。",
+        help="Compatibility option; overrides the default weights directory when provided.",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=8,
-        help="评估时的 batch size。",
+        help="Batch size during evaluation.",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="运行 CLIP 评估的设备。",
+        help="Device to run CLIP evaluation.",
     )
     parser.add_argument(
         "--disable-amp",
         action="store_true",
-        help="保留参数以兼容其他脚本；CLIP 评分不支持 AMP 切换。",
+        help="Kept for compatibility; CLIP scoring does not support AMP toggling.",
     )
     parser.add_argument(
         "--output-json",
         type=Path,
-        help="可选：将结果写入 JSON 文件。",
+        help="Optional: write results to a JSON file.",
     )
 
     args = parser.parse_args(argv)

@@ -38,14 +38,14 @@ def _load_prompts(path: Path) -> List[str]:
         with path.open("r", encoding="utf-8") as handle:
             prompts = [line.strip() for line in handle if line.strip()]
     if not prompts:
-        raise RuntimeError(f"未能从 {path} 读取到任何 prompt。")
+        raise RuntimeError(f"No prompts could be read from {path}.")
     return prompts
 
 
 def _collect_images(directory: Path, pattern: str) -> List[Path]:
     files = sorted(directory.glob(pattern))
     if not files:
-        raise RuntimeError(f"在 {directory} 下未找到匹配 {pattern} 的图像文件。")
+        raise RuntimeError(f"No image files matching {pattern} were found under {directory}.")
     return files
 
 
@@ -95,7 +95,7 @@ def _build_reward(args: argparse.Namespace) -> tuple[AestheticReward, str]:
 
     weights_path = args.weights.expanduser()
     if not weights_path.exists():
-        raise RuntimeError(f"Aesthetic 权重文件不存在：{weights_path}")
+        raise RuntimeError(f"Aesthetic weights file does not exist: {weights_path}")
 
     clip_override = os.environ.get("AESTHETIC_CLIP_PATH")
     base = AestheticV2Model(
@@ -126,7 +126,7 @@ def _score(
     batch_size: int,
 ) -> tuple[torch.Tensor, dict]:
     if len(image_files) != len(prompts):
-        raise RuntimeError(f"图像文件数量 ({len(image_files)}) 与 prompt 数量 ({len(prompts)}) 不一致。")
+        raise RuntimeError(f"Number of images ({len(image_files)}) does not match number of prompts ({len(prompts)}).")
 
     values: List[torch.Tensor] = []
     start = time.time()
@@ -149,52 +149,52 @@ def _score(
 
 def main(argv: Iterable[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Compute aesthetic scores for generated images.")
-    parser.add_argument("--images", type=Path, required=True, help="包含生成图像的目录。")
+    parser.add_argument("--images", type=Path, required=True, help="Directory containing generated images.")
     parser.add_argument(
         "--pattern",
         type=str,
         default="*.png",
-        help="匹配图像文件的 glob pattern（默认: *.png）。",
+        help="Glob pattern to match image files (default: *.png).",
     )
     parser.add_argument(
         "--prompts",
         type=Path,
         required=True,
-        help="Prompt 列表文件（CSV 需包含 text 列，或纯文本每行一个 prompt）。",
+        help="Prompt list file (CSV must include a text column, or plain text with one prompt per line).",
     )
     parser.add_argument(
         "--weights",
         type=Path,
         default=Path("weights/sac+logos+ava1-l14-linearMSE.pth"),
-        help="Aesthetic 线性头权重路径。",
+        help="Path to the Aesthetic linear head weights.",
     )
     parser.add_argument(
         "--cache-dir",
         type=Path,
         default=Path("weights"),
-        help="CLIP/Aesthetic 模型缓存目录。",
+        help="Cache directory for CLIP/Aesthetic models.",
     )
     parser.add_argument(
         "--batch-size",
         type=int,
         default=32,
-        help="评估时的 batch size。",
+        help="Batch size during evaluation.",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="运行 Aesthetic 评估的设备。",
+        help="Device to run Aesthetic evaluation.",
     )
     parser.add_argument(
         "--disable-amp",
         action="store_true",
-        help="保留参数以兼容 score_hps 接口；Aesthetic 模型不支持 AMP 切换。",
+        help="Kept for score_hps compatibility; Aesthetic model does not support AMP toggling.",
     )
     parser.add_argument(
         "--output-json",
         type=Path,
-        help="可选：将结果写入 JSON 文件。",
+        help="Optional: write results to a JSON file.",
     )
 
     args = parser.parse_args(argv)
