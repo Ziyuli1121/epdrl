@@ -82,6 +82,8 @@ torchrun --master_port=12345 --nproc_per_node=1 -m training.ppo.launch \
     --config training/ppo/cfgs/[sd15.yaml, sd3_512.yaml, sd3_1024.yaml]
 ```
 
+All RL training experiments were performed using a single NVIDIA H200 GPU.
+
 ### Inference
 
 We also provide our best model checkpoints (see released artifacts).
