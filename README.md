@@ -1,12 +1,24 @@
 # Parallel Diffusion Sampling with Low-Dimensional Alignment <br><sub>Official implementation</sub>
 
-**Abstract**: Diffusion models (DMs) have achieved state-of-the-art generative performance but suffer from high sampling latency due to their sequential denoising nature. Existing solver-based acceleration methods often face significant image quality degradation under a low-latency budget, primarily due to accumulated \textbf{truncation errors} arising from the inability to capture high-curvature trajectory segments. In this paper, we propose the \textbf{Ensemble Parallel Direction solver} (dubbed as \ours), a novel ODE solver that mitigates these errors by incorporating multiple parallel gradient evaluations in each step. Motivated by the geometric insight that sampling trajectories are largely confined to a low-dimensional manifold, \ours~leverages the Mean Value Theorem for vector-valued functions to approximate the integral solution more accurately. Importantly, since the additional gradient computations are independent, they can be \textbf{fully parallelized}, preserving low-latency sampling without additional inference cost. We introduce a \textbf{two-stage optimization framework}. Initially, \ours~optimizes a small set of learnable parameters via a distillation-based approach, ensuring minimal training overhead. We further propose a novel, parameter-efficient \textbf{Reinforcement Learning (RL) fine-tuning} scheme that reformulates the solver as a stochastic Dirichlet policy. Unlike traditional methods that fine-tune the massive backbone, our RL approach operates strictly within the \textbf{low-dimensional solver space}, effectively mitigating reward hacking while enhancing performance in complex text-to-image generation tasks. In addition, our method is flexible and can serve as a plugin (\textbf{\oursplugin}) to improve existing ODE samplers. Extensive experiments demonstrate the effectiveness of \ours. On validation benchmarks, at the same latency level of 5 NFE, the distilled \ours~achieves state-of-the-art FID scores of 4.47 on CIFAR-10, 7.97 on FFHQ, 8.17 on ImageNet, and 8.26 on LSUN Bedroom, surpassing existing learning-based solvers by a significant margin. On text-to-image benchmarks, our RL-tuned \ours~significantly improves human preference scores on both Stable Diffusion v1.5 and SD3-medium. Notably, it outperforms the official 28-step baseline of SD3-Medium with only 20 steps, effectively bridging the gap between inference efficiency and high-fidelity generation.
+<div align="center">
+<img src="assets/sd3_1024.png" alt="SD3-1024 samples" width="500">
+</div>
+
+**Abstract**: Diffusion models (DMs) reach state-of-the-art generative quality but still incur high sampling latency because denoising is sequential. Solver-based acceleration often degrades image quality under tight latency budgets, mainly from accumulated **truncation errors** when high-curvature trajectory segments are missed. We propose the **Ensemble Parallel Direction solver** (EPD), an ODE solver that reduces these errors by evaluating multiple gradients in parallel at each step. Guided by the observation that sampling trajectories lie near a low-dimensional manifold, EPD leverages the Mean Value Theorem for vector-valued functions to better approximate the integral solution. The extra gradients are independent and **fully parallelizable**, so low-latency sampling is preserved without extra inference cost. We adopt a **two-stage optimization framework**: first distill a small set of learnable parameters to keep training overhead minimal, then apply a parameter-efficient **Reinforcement Learning (RL) fine-tuning** scheme that treats the solver as a stochastic Dirichlet policy. Unlike backbone fine-tuning, this RL stage stays within the **low-dimensional solver space**, mitigating reward hacking while improving text-to-image performance. The method is flexible and can also serve as a plugin (**EPD-Plugin**) to upgrade existing ODE samplers. On validation benchmarks at the same 5 NFE latency, the distilled EPD achieves state-of-the-art FIDs of 4.47 on CIFAR-10, 7.97 on FFHQ, 8.17 on ImageNet, and 8.26 on LSUN Bedroom, surpassing existing learning-based solvers. On text-to-image benchmarks, RL-tuned EPD boosts human preference scores on both Stable Diffusion v1.5 and SD3-medium, and even beats the official 28-step SD3-Medium baseline with only 20 steps, reconciling efficiency and fidelity.
+
+<div align="center">
+<img src="assets/teaser.png" alt="EPD-Solver Algorithm" width="600">
+</div>
+
+<div align="center">
+<img src="assets/pipeline.png" alt="Training Pipeline" width="600">
+</div>
 
 ## Requirements
 
-*This codebase mainly refers to the codebase of [EDM](https://github.com/NVlabs/edm) as the base environment.* 
+*Acknowledgement: This codebase builds on [EDM](https://github.com/NVlabs/edm) as the base environment.*
 
-To configure your environment, run the following code:
+To configure your environment, run:
 
 ```bash
 conda env create -f environment.yml -n epd
@@ -22,19 +34,13 @@ pip install HPSv2
 pip install --upgrade diffusers[torch]
 ```
 
-Then, we provide code to download some model weights.
-
-1. [SD1.5 model weights](https://huggingface.co/dnwalkup/StableDiffusion-v1-Releases/resolve/main/v1-5-pruned-emaonly.ckpt)
-
-2. [HPSv2.1](https://huggingface.co/xswu/HPSv2/blob/main/HPS_v2.1_compressed.pt)
-
-3. [Aesthetic](https://huggingface.co/haor/aesthetics/resolve/main/sac%2Blogos%2Bava1-l14-linearMSE.pth)
-
-4. [MPS](https://drive.usercontent.google.com/download?id=17qrK_aJkVNM75ZEvMEePpLj6L867MLkN&export=download&authuser=0&confirm=t&uuid=56d957a5-dcbb-4bd4-8c99-c53056009c7f&at=ALWLOp6W0qUwp5vV-v5nIwVY8L9U%3A1764524212974)
-
-5. [ImageReward](https://huggingface.co/THUDM/ImageReward/blob/main/ImageReward.pt)
-
-6. [PickScore](https://github.com/yuvalkirstain/pickscore)
+Use the commands below to download the required model weights.
+- [SD1.5 model weights](https://huggingface.co/dnwalkup/StableDiffusion-v1-Releases/resolve/main/v1-5-pruned-emaonly.ckpt)
+- [HPSv2.1](https://huggingface.co/xswu/HPSv2/blob/main/HPS_v2.1_compressed.pt)
+- [Aesthetic](https://huggingface.co/haor/aesthetics/resolve/main/sac%2Blogos%2Bava1-l14-linearMSE.pth)
+- [MPS](https://drive.usercontent.google.com/download?id=17qrK_aJkVNM75ZEvMEePpLj6L867MLkN&export=download&authuser=0&confirm=t&uuid=56d957a5-dcbb-4bd4-8c99-c53056009c7f&at=ALWLOp6W0qUwp5vV-v5nIwVY8L9U%3A1764524212974)
+- [ImageReward](https://huggingface.co/THUDM/ImageReward/blob/main/ImageReward.pt)
+- [PickScore](https://github.com/yuvalkirstain/pickscore)
 
 ```bash
 cd src/ms_coco
@@ -49,27 +55,27 @@ cd ..
 ./download.sh  # ignore any output generated by this script
 ```
 
-*Note*: SD3-Medium model weights will be automatically downloaded when the relevant code is firstly executed.
+*Note*: SD3-Medium model weights download automatically the first time the relevant code runs.
 
 ## Implementation Guide
 
-It is important to make sure to use local packages regarding to HPS and taming-transformers, whenever the relevant code is executed:
+Always point to the local HPS and taming-transformers packages whenever related code runs:
 
 ```bash
 export PYTHONPATH="$PWD/HPSv2:$PWD/src/taming-transformers:$PYTHONPATH"
 ```
 
-Look up the commands in [launch.sh](./launch.sh) for RL training, sampling and evaluation.
+See [launch.sh](./launch.sh) for RL training, sampling, and evaluation commands.
 
 We also provide a detailed guide for each part below.
 
 ### RL Training
 
-To train the EPD-Solver, use our recommended training configuration files: [sd3_512.yaml](./training/ppo/cfgs/sd3_512.yaml), [sd3_1024.yaml](./training/ppo/cfgs/sd3_1024.yaml), [sd15.yaml](./training/ppo/cfgs/sd15.yaml). The detailed description of the parameters is provided in the next session.
+Train EPD-Solver with the recommended configs: [sd3_512.yaml](./training/ppo/cfgs/sd3_512.yaml), [sd3_1024.yaml](./training/ppo/cfgs/sd3_1024.yaml), [sd15.yaml](./training/ppo/cfgs/sd15.yaml). Parameter details are in the next section.
 
-For convenience, we provide the distilled EPD predictor state after distillation as the required initial model state for RL: [sd3-512-distilled.pkl](./exps/sd3-512/sd3-512-distilled.pkl), [sd3-1024-distilled.pkl](./exps/sd3-1024/sd3-1024-distilled.pkl), [sd15-distilled.pkl](./exps/sd15/sd15-distilled.pkl).
+For convenience, we provide distilled EPD predictor checkpoints as RL starting points: [sd3-512-distilled.pkl](./exps/sd3-512/sd3-512-distilled.pkl), [sd3-1024-distilled.pkl](./exps/sd3-1024/sd3-1024-distilled.pkl), [sd15-distilled.pkl](./exps/sd15/sd15-distilled.pkl).
 
-Use the following command:
+Launch training with:
 
 ```bash
 torchrun --master_port=12345 --nproc_per_node=1 -m training.ppo.launch \
@@ -78,23 +84,21 @@ torchrun --master_port=12345 --nproc_per_node=1 -m training.ppo.launch \
 
 ### Inference
 
-We also provide our best model: 
+We also provide our best model checkpoints (see released artifacts).
 
-
-
-To use an EPD-Solver to generate images, here is an example:
+To generate images with an EPD-Solver, use the examples below (replace checkpoint paths with your own exports as needed):
 
 ```bash
 ## SD1.5
 MASTER_PORT=12345 python sample.py \
-    --predictor_path exps/[xxxxxx]/export/network-snapshot-export-step000005.pkl \
+    --predictor_path exps/sd15/sd15-best.pkl \
     --prompt-file src/prompts/test.txt \
-    --seeds "0-999" \
-    --batch 16 \
+    --seeds "0-19" \
+    --batch 4 \
     --outdir samples/sd15
 
 ## SD3-Medium
-python sample_sd3.py --predictor exps/[xxxxxx]/export/network-snapshot-export-step007200.pkl \
+python sample_sd3.py --predictor exps/sd3-1024/sd3-1024-best.pkl \
   --seeds "0" \
   --outdir samples/sd3 \
   --prompt "..."
@@ -102,28 +106,53 @@ python sample_sd3.py --predictor exps/[xxxxxx]/export/network-snapshot-export-st
 
 ### Evaluation
 
-We provide six metrics to evaluate generated images, including HPSv2.1, PickScore, ImageReward, CLIP, Aesthetic, MPS. You can find the evaluation script in the bottom of [launch.sh](./launch.sh)
+We provide six metrics to evaluate generated images: HPSv2.1, PickScore, ImageReward, CLIP, Aesthetic, and MPS. The evaluation script lives at the bottom of [launch.sh](./launch.sh).
 
 ## Parameter Description
 
-**Sampling (sample.py / sample_sd3.py)**
+**Sampling (`sample.py`)**
 
 | Parameter | Default | What it controls |
 |-----------|---------|------------------|
-| `predictor_path` / `--predictor` | required | EPD predictor snapshot (.pkl) to replay. |
-| `seeds` | `0-63` (sample.py) / `0-3` (sample_sd3.py) | Seeds list or range; drives batch count. |
-| `max_batch_size` | `64` (sample.py) / `4` (sample_sd3.py) | Per-process batch size; combine with `subdirs`/`grid` for saving layout. |
-| `prompt` / `prompt-file` | None | Text prompt; `prompt-file` can be .txt or .csv (column `text`). |
-| `outdir` | Auto-resolved to `samples/...` | Output directory root; creates 1k-chunked subfolders when `subdirs=True`. |
+| `predictor_path` | required | EPD predictor snapshot (.pkl); numeric IDs auto-resolve to the latest matching checkpoint in `./exps`. |
+| `model_path` | None | (Reserved) optional backbone checkpoint override; currently unused because backbones auto-resolve from dataset tags. |
+| `max_batch_size` (`--batch`) | `64` | Per-process batch size; seeds are split across ranks. |
+| `seeds` | `0-63` | Seed list or range; determines how many images are generated. |
+| `prompt` | None | Single text prompt for all seeds; if omitted, falls back to `prompt-file` or MS-COCO eval captions for `dataset_name=ms_coco`. |
+| `prompt-file` | None | Text or CSV (column `text`) with prompts; used when `prompt` is empty. |
+| `backend` | Predictor metadata | Override backbone (`ldm`/`sd3`); defaults to what is stored in the predictor. |
+| `backend-config` | None | JSON object overriding backend options (e.g., SD3 resolution/torch_dtype/offload/token). |
+| `use_fp16` | `False` | Reserved flag for mixed precision (not currently wired). |
+| `return_inters` | `False` | Reserved flag for saving intermediates (not currently wired). |
+| `outdir` | Auto (`./samples/{dataset}` or `./samples/grids/{dataset}`) | Output root; falls back to a derived path when unset. |
+| `grid` | `False` | Save a grid per batch instead of per-image files. |
+| `subdirs` | `True` | When saving per-image files, create 1k-chunked subfolders. |
+
+**Sampling (`sample_sd3.py`)**
+
+| Parameter | Default | What it controls |
+|-----------|---------|------------------|
+| `predictor` | required | SD3 EPD predictor snapshot (.pkl). |
+| `seeds` | `0-3` | Seed list or range; determines how many images are generated. |
+| `prompt` | None | Single prompt for all seeds; if empty, uses `prompt-file` or falls back to empty prompts. |
+| `prompt-file` | None | Text/CSV file with prompts; repeats to match `seeds` length. |
+| `outdir` | `./samples/sd3_epd` | Output directory. |
+| `grid` | `False` | Save a grid per batch. |
+| `max-batch-size` | `4` | Per-batch sample count (`--max-batch-size`). |
+| `resolution` | Predictor/back-end config (512 or 1024) | Optional override; must match predictor metadata if set. |
 
 **Solver metadata (read from predictor checkpoints)**
 
 | Parameter | Default source | Notes |
 |-----------|----------------|-------|
-| `num_steps` | Predictor ckpt | inference steps; total NFE `2*(num_steps-1)`. |
-| `guidance_type` / `guidance_rate` | Predictor ckpt | CFG sampling (e.g., 4.5 for SD3 ppo configs, 7.5 for SD1.5). |
+| `dataset_name` | Predictor ckpt | Dataset tag (e.g., `ms_coco`); drives prompt fallback and output paths. |
+| `backend` / `backend_config` | Predictor ckpt | Backbone type plus stored options (resolution, flow-match params, offload/token settings for SD3, etc.). |
+| `num_steps` | Predictor ckpt | Inference steps; base NFE `2*(num_steps-1)` (minus one eval when `afs=True`, doubled again for CFG in ms_coco). |
+| `num_points` | Predictor ckpt | Number of intermediate points per step; used for NFE reporting/outdir naming. |
+| `guidance_type` / `guidance_rate` | Predictor ckpt | CFG sampling (e.g., 4.5 for SD3 PPO configs, 7.5 for SD1.5). |
 | `schedule_type` / `schedule_rho` | Predictor ckpt | `flowmatch` for SD3, `discrete` for SD1.5. |
-| `sigma_min` / `sigma_max` | Predictor or backend | Noise range passed to scheduler. |
+| `sigma_min` / `sigma_max` | Predictor or backend | Noise range passed to scheduler (falls back to backend defaults when unset). |
+| `flowmatch_mu` / `flowmatch_shift` | Predictor or backend | Flow-matching parameters used by SD3 schedules. |
 | `afs`, `max_order`, `predict_x0`, `lower_order_final` | Predictor ckpt | EPD/DPM solver behavior flags. |
 
 **RL Training configs (`training/ppo/cfgs/*.yaml`)**
@@ -131,21 +160,25 @@ We provide six metrics to evaluate generated images, including HPSv2.1, PickScor
 | Key | sd3_512 | sd3_1024 | sd15 | Purpose |
 |-----|---------|----------|------|---------|
 | `data.predictor_snapshot` | `exps/sd3-512/...-distilled.pkl` | `exps/sd3-1024/...-distilled.pkl` | `exps/sd15/...-distilled.pkl` | Starting EPD predictor. |
-| `model.dataset_name` | `ms_coco` | `ms_coco` | `ms_coco` | Training dataset tag. |
-| `model.guidance_type` | `cfg` | `cfg` | `cfg` | Use classifier-free guidance. |
-| `model.guidance_rate` | `4.5` | `4.5` | `7.5` | Guidance strength. |
-| `model.backend` | `sd3` | `sd3` | `ldm` | Backbone family. |
-| `reward.type` | `multi` | `multi` | `multi` | Multi-head reward aggregation. |
-| `reward.multi.weights` | `hps:1.0` (others 0) | same | same | Per-head reward weights. |
-| `reward.batch_size` | `4` | `4` | `4` | Reward evaluation batch size. |
+| `model.backend` | `sd3` | `sd3` | `ldm` | Backbone family used during RL. |
+| `model.resolution` | `512` | `1024` | n/a | SD3 training resolution (LDM inherits from predictor/backbone). |
+| `model.schedule_type` | `flowmatch` | `flowmatch` | `discrete` | Diffusion schedule during RL. |
+| `model.guidance_rate` | `4.5` | `4.5` | `7.5` | CFG scale used while training the solver. |
 | `ppo.rollout_batch_size` | `16` | `8` | `8` | Samples per PPO rollout. |
-| `ppo.rloo_k` | `4` | `4` | `4` | RLOO baseline samples. |
-| `ppo.ppo_epochs` | `1` | `1` | `1` | PPO epochs per update. |
-| `ppo.minibatch_size` | `4` | `4` | `4` | Minibatch size. |
-| `ppo.learning_rate` | `7e-5` | `7e-5` | `7e-5` | Optimizer LR. |
-| `ppo.clip_range` | `0.2` | `0.2` | `0.2` | PPO clip epsilon. |
-| `ppo.kl_coef` / `entropy_coef` | `0.0 / 0.0` | `0.0 / 0.0` | `0.0 / 0.0` | Regularization weights. |
 | `ppo.dirichlet_concentration` | `10` | `10` | `20` | Dirichlet policy concentration. |
+| `reward.batch_size` | `4` | `4` | `4` | Reward evaluation batch size. |
+| `reward.multi.weights` | `hps:1.0` (others 0) | same | same | Per-head reward weights. |
+
+Shared defaults across configs: `model.dataset_name=ms_coco`, `model.guidance_type=cfg`, `model.schedule_rho=1.0`, `model.num_steps/num_points/sigma_min/sigma_max` left `null` to inherit predictors/backends, `reward.type=multi`, `reward.enable_amp=true`, `reward.weights_path=weights/HPS_v2.1_compressed.pt`, `ppo.learning_rate=7e-5`, `ppo.minibatch_size=4`, `ppo.ppo_epochs=1`, `ppo.rloo_k=4`, `ppo.clip_range=0.2`, `ppo.kl_coef=0.0`, `ppo.entropy_coef=0.0`, `ppo.max_grad_norm=1.0`, `ppo.decode_rgb=true`, `ppo.steps=99999`, `logging.log_interval=1`, `logging.save_interval=500`, `run.output_root=exps`, `run.seed=0`.
+
+## 🚀 Performance Highlights
+<div align="center">
+<img src="assets/fid.png" alt="FID across datasets" width="800">
+</div>
+
+<div align="center">
+<img src="assets/performance.png" alt="T2I Performance" width="800">
+</div>
 
 ## Citation
 If you find this repository useful, please consider citing the following paper:
