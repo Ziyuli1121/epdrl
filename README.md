@@ -86,7 +86,7 @@ All RL training experiments were performed using a single NVIDIA H200 GPU.
 
 ### Inference
 
-We also provide our best model checkpoints (see released artifacts).
+We also provide our best model checkpoints: [sd3-512-best.pkl](./exps/sd3-512/sd3-512-best.pkl), [sd3-1024-best.pkl](./exps/sd3-1024/sd3-1024-best.pkl), [sd15-best.pkl](./exps/sd15/sd15-best.pkl).
 
 To generate images with an EPD-Solver, use the examples below (replace checkpoint paths with your own exports as needed):
 
