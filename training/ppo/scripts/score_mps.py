@@ -51,7 +51,7 @@ def _collect_images(directory: Path, pattern: str) -> List[Path]:
 
 
 def _default_mps_root() -> Path:
-    return Path(__file__).resolve().parents[3] / "MPS"
+    return Path(__file__).resolve().parents[2] / "reward_models" / "MPS"
 
 
 class _MPSScorer:

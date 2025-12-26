@@ -4,20 +4,24 @@
 torchrun --master_port=23123 --nproc_per_node=1 -m training.ppo.launch \
     --config training/ppo/cfgs/sd15.yaml
 
+### You can replace "/path/to/local/sd3-model" with your local SD3 Medium folder or checkpoint, to avoid downloads.
+
 ## SD3-Medium (512x512)
 torchrun --master_port=22222 --nproc_per_node=1 -m training.ppo.launch \
-    --config training/ppo/cfgs/sd3_512.yaml
+    --config training/ppo/cfgs/sd3_512.yaml \
+    --override model.backend_options.model_name_or_path=/path/to/local/sd3-model
 
 ## SD3-Medium (1024x1024)
 torchrun --master_port=12345 --nproc_per_node=1 -m training.ppo.launch \
-    --config training/ppo/cfgs/sd3_1024.yaml
+    --config training/ppo/cfgs/sd3_1024.yaml \
+    --override model.backend_options.model_name_or_path=/path/to/local/sd3-model
 
 # Sample
 
 ## Export the EPD predictor
 python -m training.ppo.export_epd_predictor \
-  exps/[xxxxxx] \
-  --checkpoint checkpoints/policy-step[xxxxxx].pt
+    exps/[xxxxxx] \
+    --checkpoint checkpoints/policy-step[xxxxxx].pt
 
 
 ## SD1.5
@@ -37,15 +41,17 @@ MASTER_PORT=55551 python sample.py \
 
 ## SD3-Medium
 python sample_sd3.py --predictor exps/sd3-1024/sd3-1024-best.pkl \
-  --seeds "0" \
-  --outdir samples/sd3 \
-  --prompt "A very big apple."
+    --seeds "0" \
+    --outdir samples/sd3 \
+    --prompt "A very big apple." \
+    --backend-config "{\"model_name_or_path\":\"/path/to/local/sd3-model\"}"
 
 python sample_sd3.py --predictor exps/sd3-512/sd3-512-best.pkl \
-  --prompt-file src/prompts/test.txt \
-  --seeds "0-9" \
-  --max-batch-size 1 \
-  --outdir samples/sd3_epd_9_1024_8000
+    --prompt-file src/prompts/test.txt \
+    --seeds "0-9" \
+    --max-batch-size 1 \
+    --outdir samples/sd3_epd_9_1024_8000 \
+    --backend-config "{\"model_name_or_path\":\"/path/to/local/sd3-model\"}"
 
 # Evaluation 
 score_all_metrics() {

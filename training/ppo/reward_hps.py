@@ -7,6 +7,7 @@ batched efficiently.
 """
 
 import os
+import sys
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -17,6 +18,10 @@ import torch
 import torch.distributed as dist
 from PIL import Image
 from torchvision.transforms.functional import pil_to_tensor, to_pil_image
+
+HPS_LOCAL_PATH = Path(__file__).resolve().parents[1] / "reward_models" / "HPSv2"
+if HPS_LOCAL_PATH.exists() and str(HPS_LOCAL_PATH) not in sys.path:
+    sys.path.insert(0, str(HPS_LOCAL_PATH))
 
 try:
     from hpsv2.src.open_clip import create_model_and_transforms, get_tokenizer
